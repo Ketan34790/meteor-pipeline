@@ -1,0 +1,115 @@
+pipeline {
+    agent any
+    environment {
+        NVM_DIR = "/home/keatan/.nvm"
+        BUILD_DIR = "/var/lib/jenkins/workspace/meteorDeployment/build"
+        DEPLOY_DIR = "/var/lib/jenkins/workspace/meteorDeployment/deploy"
+        WORKDIR = "/var/lib/jenkins/workspace/MeteorPipeline/meteorApp"
+    }
+
+    stages {
+        stage ("Clone") {
+            steps {
+                script {
+                    // Clone the repository into the Jenkins workspace
+                    checkout([
+                        $class: 'GitSCM', 
+                        branches: [[name: '*/main']], 
+                        doGenerateSubmoduleConfigurations: false, 
+                        extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: '.']], 
+                        submoduleCfg: [], 
+                        userRemoteConfigs: [[
+                            credentialsId: 'alite-github-creds', 
+                            url: 'https://github.com/Ketan34790/meteor-pipeline.git'
+                        ]]
+                    ])
+                    env.PREV_STAGE = 'clone'
+                    
+
+                }
+            
+            }
+        }
+
+        stage ("Build") {
+            steps {
+                sh '''
+                    #!/bin/bash
+                    set -e
+                    set -x
+
+                    cd $WORKDIR
+
+                    . "$NVM_DIR/nvm.sh" > /dev/null 2>&1
+
+                    export PATH="$HOME/.meteor:$PATH" > /dev/null 2>&1
+                    
+                    ls -laSh
+
+                    nvm install 20 && nvm use 20
+
+                    npm install
+
+                    export GENERATE_SOURCEMAP=false
+
+                    meteor build $BUILD_DIR
+
+                    cd $BUILD_DIR && ls -la
+                '''
+            }
+        }
+
+        stage ("ServerCopy") {
+            steps {
+                sh '''
+                    #!/bin/bash
+                    echo "The files are already copied to the server!"
+                    cd $BUILD_DIR
+
+                    ls -lah
+
+                    tar -xvzf meteorApp.tar.gz -C $DEPLOY_DIR && ls
+                    
+                    cd $DEPLOY_DIR
+
+                    ls
+                   
+
+                    cd bundle/programs/server
+                    . "$NVM_DIR/nvm.sh" > /dev/null 2>&1
+                    export PATH="$HOME/.meteor:$PATH" > /dev/null 2>&1
+                    nvm install 20 && nvm use 20
+                    meteor npm install
+
+
+                '''
+            }
+        }
+
+        stage ("Deploy") {
+            steps {
+                sh '''
+                #!/bin/bash
+                set -x
+                echo "Deploy Stage"
+                cd $DEPLOY_DIR
+                cd bundle/ && cp ../../.env .
+                pwd && ls -a
+                . "$NVM_DIR/nvm.sh" > /dev/null 2>&1
+                nvm install 20 && nvm use 20
+                ls -a
+                #. .env
+                export ROOT_URL="http://localhost:3003"
+                export MONGO_URL="mongodb://root:example@localhost:27017/yourdb?authSource=admin"
+                export PORT=3003
+
+
+                pm2 start node --name "meteorApp" -- main.js --time
+
+
+
+                '''
+            }
+        }
+    }
+}
