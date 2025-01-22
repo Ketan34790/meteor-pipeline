@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        NVM_DIR = "/home/keatan/.nvm"
+        NVM_DIR = "/home/alite-148/.nvm"
         BUILD_DIR = "/var/lib/jenkins/workspace/meteorDeployment/build"
         DEPLOY_DIR = "/var/lib/jenkins/workspace/meteorDeployment/deploy"
         WORKDIR = "/var/lib/jenkins/workspace/MeteorPipeline/meteorApp"
@@ -19,7 +19,7 @@ pipeline {
                         extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: '.']], 
                         submoduleCfg: [], 
                         userRemoteConfigs: [[
-                            credentialsId: 'alite-github-creds', 
+                            credentialsId: 'githubCreds', 
                             url: 'https://github.com/Ketan34790/meteor-pipeline.git'
                         ]]
                     ])
